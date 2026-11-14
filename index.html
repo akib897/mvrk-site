@@ -689,9 +689,18 @@ class Component extends DCLogic {
 <script type="module">
   import Featurebase, { show, onShow, onHide } from 'https://cdn.jsdelivr.net/npm/featurebase-js@1.0.3/dist/index.js';
   Featurebase({ appId: '6af843debc6ae83832a8de42', theme: 'dark', hideDefaultLauncher: true });
-  window.mvrkChat = { show };
-  onShow(() => document.documentElement.classList.add('fb-chat-open'));
-  onHide(() => document.documentElement.classList.remove('fb-chat-open'));
+  // A click before the messenger has finished starting is ignored by Featurebase,
+  // so keep asking it to open (every 0.5s, up to 15s) until it actually opens.
+  let isOpen = false, retry;
+  const open = () => {
+    clearInterval(retry);
+    let tries = 0;
+    show();
+    retry = setInterval(() => { if (isOpen || ++tries > 30) clearInterval(retry); else show(); }, 500);
+  };
+  window.mvrkChat = { show: open };
+  onShow(() => { isOpen = true; clearInterval(retry); document.documentElement.classList.add('fb-chat-open'); });
+  onHide(() => { isOpen = false; document.documentElement.classList.remove('fb-chat-open'); });
 </script>
 </body>
 </html>
