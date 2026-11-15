@@ -96,9 +96,9 @@
         <div style="display:flex;justify-content:space-between;align-items:center;gap:16px"><span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8f8c87;color:#cfcdc9"><span style="width:6px;height:6px;border-radius:50%;background:#e0293b"></span>Start a project</span><button type="button" class="enq-x" aria-label="Close" onClick="{{ closeEnq }}">✕</button></div>
         <sc-if value="{{ formSent }}" hint-placeholder-val="{{ false }}">
           <div style="flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;gap:20px">
-            <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8f8c87"><span style="width:6px;height:6px;border-radius:50%;background:#e0293b"></span>Almost done</span>
-            <span style="font-family:'Rubik',sans-serif;font-weight:600;font-size:clamp(44px,7vw,120px);line-height:.9;letter-spacing:-.01em;text-transform:uppercase;color:#fff;text-wrap:balance">Hit send in your mail app</span>
-            <span style="max-width:52ch;font-size:16px;line-height:1.6;color:#a9a6a1">Your enquiry is filled in and ready to go.</span>
+            <span style="display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8f8c87"><span style="width:6px;height:6px;border-radius:50%;background:#e0293b"></span>{{ sentTag }}</span>
+            <span style="font-family:'Rubik',sans-serif;font-weight:600;font-size:clamp(44px,7vw,120px);line-height:.9;letter-spacing:-.01em;text-transform:uppercase;color:#fff;text-wrap:balance">{{ sentTitle }}</span>
+            <span style="max-width:52ch;font-size:16px;line-height:1.6;color:#a9a6a1">{{ sentText }}</span>
             <button type="button" onClick="{{ formReset }}" style="align-self:flex-start;padding:0;border:0;background:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#fff">Start another →</button>
           </div>
         </sc-if>
@@ -115,7 +115,7 @@
               </div>
               <label class="enq-f"><span>Delivery date</span><input type="date" name="deadline" class="mv-date" onInput="{{ dateInput }}"></label>
               <label class="enq-f"><span>Notes · shot count, plates, links</span><textarea name="msg" rows="2"></textarea></label>
-              <button type="submit" class="enq-send"><span>Send enquiry</span><span style="font-weight:300">→</span></button>
+              <button type="submit" class="enq-send"><span>{{ sendLabel }}</span><span style="font-weight:300">→</span></button>
             </div>
           </form>
         </sc-if>
@@ -672,11 +672,21 @@ class Component extends DCLogic {
       bgRef: this.bgRef, bgOpacity: page === 'contact' ? '1' : '0',
       enqOpen: !!this.state.enq, openEnq: () => this.setState({ enq: true }), closeEnq: () => this.setState({ enq: false }),
       formSent: !!this.state.sent, formOpen: !this.state.sent,
-      formSubmit: e => { e.preventDefault(); const f = new FormData(e.target), g = k => (f.get(k) || '').toString().trim();
-        const body = ['Services: ' + ((this.state.needs || []).join(', ') || '-'), 'Due: ' + (g('deadline') || '-'), '', g('msg'), '', '— ' + g('name'), g('email')].join('\n');
-        window.location.href = 'mailto:hasnayeen@mvrk.tv?subject=' + encodeURIComponent('New shot enquiry from ' + (g('name') || 'website')) + '&body=' + encodeURIComponent(body);
-        this.setState({ sent: true }); },
-      dateInput: e => e.target.classList.toggle('has-val', !!e.target.value), formReset: () => this.setState({ sent: false, needs: [], ptype: [] }),
+      // On mvrk.tv the enquiry goes straight to hasnayeen@mvrk.tv through WordPress (Contact Form 7, form 5996).
+      // Elsewhere (GitHub test copy), or if sending fails, it falls back to opening the visitor's mail app.
+      formSubmit: e => { e.preventDefault(); if (this.state.sending) return; const f = new FormData(e.target), g = k => (f.get(k) || '').toString().trim(), needs = (this.state.needs || []).join(', '), types = (this.state.ptype || []).join(', ');
+        const mail = () => { const body = ['Services: ' + (needs || '-'), 'Project type: ' + (types || '-'), 'Due: ' + (g('deadline') || '-'), '', g('msg'), '', '— ' + g('name'), g('email')].join('\n');
+          window.location.href = 'mailto:hasnayeen@mvrk.tv?subject=' + encodeURIComponent('New shot enquiry from ' + (g('name') || 'website')) + '&body=' + encodeURIComponent(body);
+          this.setState({ sending: false, sent: 'mail' }); };
+        if (!/(^|\.)mvrk\.tv$/.test(location.hostname)) { mail(); return; }
+        const d = new FormData(); [['_wpcf7', '5996'], ['_wpcf7_version', '6.1.7'], ['_wpcf7_locale', 'en_US'], ['_wpcf7_unit_tag', 'wpcf7-f5996-o1'], ['_wpcf7_container_post', '0'], ['your-name', g('name')], ['your-email', g('email')], ['services', needs], ['project-type', types], ['deadline', g('deadline')], ['notes', g('msg')]].forEach(([k, v]) => d.append(k, v));
+        this.setState({ sending: true });
+        fetch('/wp-json/contact-form-7/v1/contact-forms/5996/feedback', { method: 'POST', body: d }).then(r => r.json()).then(j => { if (j && j.status === 'mail_sent') this.setState({ sending: false, sent: 'web' }); else mail(); }).catch(mail); },
+      sendLabel: this.state.sending ? 'Sending…' : 'Send enquiry',
+      sentTag: this.state.sent === 'web' ? 'Enquiry sent' : 'Almost done',
+      sentTitle: this.state.sent === 'web' ? 'Thanks, we’ve got it' : 'Hit send in your mail app',
+      sentText: this.state.sent === 'web' ? 'Your enquiry is with our VFX team at hasnayeen@mvrk.tv. We’ll reply by email.' : 'Your enquiry is filled in and ready to go.',
+      dateInput: e => e.target.classList.toggle('has-val', !!e.target.value), formReset: () => this.setState({ sent: false, sending: false, needs: [], ptype: [] }),
       typeChips: ['Feature film','Series','Commercial','Music video'].map(label => { const sel = (this.state.ptype || []).includes(label); return { label, bg: sel ? '#e0293b' : 'transparent', border: sel ? '#e0293b' : 'rgba(255,255,255,.14)', color: sel ? '#fff' : '#cfccc7', toggle: () => this.setState(st => { const n = st.ptype || []; return { ptype: n.includes(label) ? n.filter(x => x !== label) : [...n, label] }; }) }; }),
       needChips: ['Rotoscoping','Keying','Paint & Cleanup','2D / 3D Tracking','Compositing'].map(label => { const sel = (this.state.needs || []).includes(label); return { label, txt: sel ? '#ffffff' : '#6f6c68', box: sel ? '#e0293b' : 'rgba(255,255,255,.35)', fill: sel ? '#e0293b' : 'transparent', bg: sel ? '#e0293b' : 'transparent', border: sel ? '#e0293b' : 'rgba(255,255,255,.14)', color: sel ? '#fff' : '#cfccc7', toggle: () => this.setState(st => { const n = st.needs || []; return { needs: n.includes(label) ? n.filter(x => x !== label) : [...n, label] }; }) }; })
     };

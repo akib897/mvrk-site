@@ -46,6 +46,7 @@ jobs:
           cp index.html support.js _site/
           cp -r assets _site/
           cp deploy/vfx.htaccess _site/.htaccess
+          cp -r deploy/contact-vfx _site/
           echo "Files to upload:"
           du -sh _site
           find _site -type f | wc -l
