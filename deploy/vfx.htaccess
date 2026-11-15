@@ -1,0 +1,15 @@
+# Uploaded as .htaccess into the vfx folder on SiteGround by the
+# "Deploy to mvrk.tv" button (.github/workflows/deploy-mvrk.yml).
+
+# Open index.html when someone visits mvrk.tv/vfx/
+DirectoryIndex index.html
+
+RewriteEngine On
+
+# The old WordPress contact page now goes to the new contact page.
+RewriteRule ^contact-vfx/?$ /vfx/#/contact [R=301,NE,L]
+
+# Always check for a fresh copy of the page itself (images and videos still cache).
+<FilesMatch "^index\.html$">
+  Header set Cache-Control "no-cache"
+</FilesMatch>

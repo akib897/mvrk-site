@@ -1,0 +1,123 @@
+# "Deploy to mvrk.tv" button.
+# Copies the website (index.html, support.js, assets/) into the vfx folder on
+# SiteGround, so it appears at https://mvrk.tv/vfx/. Nothing else on mvrk.tv
+# (the start page, the ONE site, WordPress) is touched.
+#
+# It only runs when someone clicks "Run workflow" on GitHub (Actions tab).
+# Pushing to GitHub does NOT run it.
+#
+# Login details are stored as GitHub secrets (never in this file):
+#   SG_HOST, SG_USER, SG_PORT, SG_SSH_KEY, SG_SSH_PASSPHRASE
+
+name: Deploy to mvrk.tv
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "What to do"
+        type: choice
+        default: "Test run (change nothing)"
+        options:
+          - "Test run (change nothing)"
+          - "Deploy to mvrk.tv"
+
+concurrency:
+  group: deploy-mvrk
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # Folder of the mvrk.tv website on SiteGround (relative to the SSH home folder).
+  SITE_ROOT: www/mvrk.tv/public_html
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the website files
+        uses: actions/checkout@v4
+
+      - name: Put together the files to upload
+        run: |
+          mkdir -p _site
+          cp index.html support.js _site/
+          cp -r assets _site/
+          cp deploy/vfx.htaccess _site/.htaccess
+          echo "Files to upload:"
+          du -sh _site
+          find _site -type f | wc -l
+
+      - name: Prepare the SiteGround login
+        env:
+          SG_SSH_KEY: ${{ secrets.SG_SSH_KEY }}
+          SG_SSH_PASSPHRASE: ${{ secrets.SG_SSH_PASSPHRASE }}
+          SG_HOST: ${{ secrets.SG_HOST }}
+          SG_USER: ${{ secrets.SG_USER }}
+          SG_PORT: ${{ secrets.SG_PORT }}
+        run: |
+          for v in SG_SSH_KEY SG_HOST SG_USER SG_PORT; do
+            if [ -z "${!v}" ]; then echo "Missing GitHub secret: $v"; exit 1; fi
+          done
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SG_SSH_KEY" > ~/.ssh/sg_key
+          chmod 600 ~/.ssh/sg_key
+          # SiteGround keys have a password; remove it from this temporary copy only.
+          if [ -n "$SG_SSH_PASSPHRASE" ]; then
+            ssh-keygen -p -P "$SG_SSH_PASSPHRASE" -N "" -f ~/.ssh/sg_key > /dev/null
+          fi
+          ssh-keyscan -p "$SG_PORT" "$SG_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          echo "SSH_CMD=ssh -p $SG_PORT -i $HOME/.ssh/sg_key -o IdentitiesOnly=yes" >> "$GITHUB_ENV"
+          echo "TARGET=$SG_USER@$SG_HOST" >> "$GITHUB_ENV"
+
+      - name: Safety check (is this really the mvrk.tv website?)
+        run: |
+          $SSH_CMD "$TARGET" "
+            set -e
+            cd '$SITE_ROOT'
+            test -f wp-config.php || { echo 'No WordPress found in $SITE_ROOT, stopping.'; exit 1; }
+            test -d one || { echo 'No one/ folder found in $SITE_ROOT, stopping.'; exit 1; }
+            echo 'Found the mvrk.tv website folder. Current vfx folder:'
+            if [ -d vfx ]; then ls -la vfx | head -20; else echo '(no vfx folder yet, the WordPress VFX page is used)'; fi
+          "
+
+      - name: Test run - list what would change
+        if: inputs.mode != 'Deploy to mvrk.tv'
+        run: |
+          rsync -az --delete --dry-run --itemize-changes -e "$SSH_CMD" \
+            _site/ "$TARGET:$SITE_ROOT/vfx/" | head -100
+          echo ""
+          echo "TEST RUN ONLY. Nothing was changed on mvrk.tv."
+
+      - name: Back up the current vfx folder on the server
+        if: inputs.mode == 'Deploy to mvrk.tv'
+        run: |
+          $SSH_CMD "$TARGET" "
+            set -e
+            mkdir -p vfx-backups
+            if [ -d '$SITE_ROOT/vfx' ]; then
+              tar czf vfx-backups/vfx-\$(date +%Y%m%d-%H%M%S).tgz -C '$SITE_ROOT' vfx
+              ls -t vfx-backups/*.tgz | tail -n +6 | xargs -r rm --
+              echo 'Backup saved in vfx-backups (last 5 kept).'
+            else
+              echo 'No vfx folder yet, nothing to back up.'
+            fi
+          "
+
+      - name: Upload to mvrk.tv/vfx/
+        if: inputs.mode == 'Deploy to mvrk.tv'
+        run: |
+          rsync -az --delete -e "$SSH_CMD" _site/ "$TARGET:$SITE_ROOT/vfx/"
+          echo "Uploaded."
+
+      - name: Clear the SiteGround cache
+        if: inputs.mode == 'Deploy to mvrk.tv'
+        run: |
+          $SSH_CMD "$TARGET" "cd '$SITE_ROOT' && wp sg purge" \
+            || echo "Could not clear the cache automatically. Use Site Tools > Speed > Caching > Flush Cache."
+
+      - name: Remove the login copy
+        if: always()
+        run: rm -f ~/.ssh/sg_key
