@@ -9,6 +9,8 @@ import { SYSTEM_PROMPT } from "./knowledge.js";
 const MODEL = "claude-haiku-5-5";
 const MAX_HISTORY = 12; // only the last few messages are sent, to keep cost down
 const MAX_CHARS = 1000; // longest visitor message accepted
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_IMAGE_B64 = 1_500_000; // about 1 MB picture; the website shrinks pictures before sending
 
 const CONTACT_FALLBACK =
   "Sorry, I can't answer right now. Please email hasnayeen@mvrk.tv or message us on WhatsApp at +880 1671-685989, and the team will get back to you.";
@@ -79,6 +81,23 @@ export default {
     }
     const messages = cleanHistory(body && body.messages);
     if (!messages) return json({ error: "No visitor message" }, 400, cors);
+
+    // Optional picture (a frame or screenshot) sent with the visitor's latest message.
+    const img = body && body.image;
+    if (
+      img &&
+      IMAGE_TYPES.includes(img.media_type) &&
+      typeof img.data === "string" &&
+      img.data.length > 0 &&
+      img.data.length <= MAX_IMAGE_B64 &&
+      /^[A-Za-z0-9+/=]+$/.test(img.data)
+    ) {
+      const last = messages[messages.length - 1];
+      last.content = [
+        { type: "image", source: { type: "base64", media_type: img.media_type, data: img.data } },
+        { type: "text", text: last.content },
+      ];
+    }
 
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
