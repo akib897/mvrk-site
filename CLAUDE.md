@@ -19,7 +19,7 @@ The redesigned website for **MVRK Studios** (always "MVRK Studios" — never "MV
 ## Facts that must stay as they are
 - Studios: Dhaka (House 112, Road 6, Mohakhali DOHS, Dhaka-1212), MVRK Sharjah (Business Center, Sharjah Publishing City Free Zone), MVRK New York (2248 Broadway, #1619, NY 10024), MVRK Singapore (151 Chin Swee Road, #02-24 Manhattan House, 169876).
 - Contacts: Global Sales alan.gomes@mvrk.tv, phil@mvrk.tv, ian@mvrk.tv · VFX post-production hasnayeen@mvrk.tv · WhatsApp +880 1671-685989.
-- LinkedIn https://www.linkedin.com/company/mvrk-vfx/ · Book a call https://calendly.com/skill-ventures
+- LinkedIn https://www.linkedin.com/company/mvrk-vfx/ · Book a call https://calendly.com/hasnayeen-mvrk/discovery-call (Hasnayeen's own Calendly, named "MVRK Studios" with the MVRK logo; the Skill Ventures Calendly is for Skill Graphics only)
 - Privacy page: effective date November 13, 2026; data controller MVRK Studios; contact hasnayeen@mvrk.tv.
 - Project data on the site is real — do not replace it with placeholders.
 

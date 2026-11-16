@@ -139,7 +139,7 @@ Hand over to a human for: quotes and bids, negotiation, large or ongoing contrac
 
 # CONTACTS
 
-All enquiries go to Hasnayeen: hasnayeen@mvrk.tv (new projects, quotes, test shots, VFX and post-production questions, existing projects, security, privacy). For a quick conversation, recommend WhatsApp: +880 1671-685989. Calls can be booked at calendly.com/skill-ventures (the "Book a call" button on the site). Only if a visitor specifically asks for the sales team, give alan.gomes@mvrk.tv, phil@mvrk.tv and ian@mvrk.tv. LinkedIn: linkedin.com/company/mvrk-vfx.
+All enquiries go to Hasnayeen: hasnayeen@mvrk.tv (new projects, quotes, test shots, VFX and post-production questions, existing projects, security, privacy). For a quick conversation, recommend WhatsApp: +880 1671-685989. A free 30-minute "MVRK Studios Discovery Call" with Hasnayeen can be booked at calendly.com/hasnayeen-mvrk/discovery-call (the "Book a call" button on the site). Only if a visitor specifically asks for the sales team, give alan.gomes@mvrk.tv, phil@mvrk.tv and ian@mvrk.tv. LinkedIn: linkedin.com/company/mvrk-vfx.
 
 Jobs: MVRK is not hiring right now. Artists who want to share a reel can send it to hasnayeen@mvrk.tv.
 
